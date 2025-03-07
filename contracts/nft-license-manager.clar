@@ -120,3 +120,55 @@
 (define-public (verify-administrator)
     (ok (is-eq tx-sender contract-owner)))
 
+;; Terminate an active license
+(define-public (terminate-license (license-id uint))
+    (let 
+        (
+            (current-holder (unwrap! (nft-get-owner? license-nft license-id) error-license-missing))
+        )
+        (asserts! (is-eq tx-sender current-holder) error-permission-denied)
+        (asserts! (not (license-terminated-check license-id)) error-license-terminated)
+        (try! (nft-burn? license-nft license-id current-holder))
+        (map-set terminated-licenses license-id true)
+        (ok true)))
+
+;; Transfer license ownership between parties
+(define-public (transfer-license-ownership (license-id uint) (current-owner principal) (new-owner principal))
+    (begin
+        (asserts! (is-eq new-owner tx-sender) error-permission-denied)
+        (asserts! (not (license-terminated-check license-id)) error-license-terminated)
+        (let 
+            (
+                (verified-owner (unwrap! (nft-get-owner? license-nft license-id) error-license-missing))
+            )
+            (asserts! (is-eq verified-owner current-owner) error-permission-denied)
+            (try! (nft-transfer? license-nft license-id current-owner new-owner))
+            (ok true))))
+
+;; Update license metadata
+(define-public (modify-license-details (license-id uint) (updated-details (string-ascii 512)))
+    (begin
+        (let 
+            (
+                (license-owner (unwrap! (nft-get-owner? license-nft license-id) error-license-missing))
+            )
+            (asserts! (is-eq license-owner tx-sender) error-permission-denied)
+            (asserts! (details-validation updated-details) error-license-details-invalid)
+            (map-set license-details license-id updated-details)
+            (ok true))))
+
+;; ======================================
+;; SECTION 5: LICENSE MANAGEMENT UTILITIES
+;; ======================================
+
+(define-public (increment-license-counter)
+  (let
+      (
+          (next-id (+ (var-get license-counter) u1))
+      )
+      (var-set license-counter next-id)
+      (ok next-id)))
+
+(define-public (get-total-license-count)
+  (ok (var-get license-counter)))
+
