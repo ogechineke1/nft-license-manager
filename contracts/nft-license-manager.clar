@@ -172,3 +172,56 @@
 (define-public (get-total-license-count)
   (ok (var-get license-counter)))
 
+(define-public (check-license-terminated (license-id uint))
+  (let
+      (
+          (is-terminated (map-get? terminated-licenses license-id))
+      )
+      (ok (default-to false is-terminated))))
+
+(define-public (verify-license-owner (license-id uint))
+  (let
+      ((owner (unwrap! (nft-get-owner? license-nft license-id) error-license-missing)))
+    (ok (is-eq owner tx-sender))))
+
+
+(define-public (check-license-exists (license-id uint))
+  (let
+      (
+          (exists (is-some (map-get? license-details license-id)))
+      )
+      (ok exists)))
+
+(define-public (validate-details-format (details (string-ascii 512)))
+  (let
+      (
+          (details-len (len details))
+      )
+      (ok (and (> details-len u0) (<= details-len u512)))))
+
+(define-public (terminate-license-simple (license-id uint))
+  (let
+      (
+          (is-terminated (license-terminated-check license-id))
+      )
+      (asserts! (not is-terminated) error-license-terminated)
+      (map-set terminated-licenses license-id true)
+      (ok true)))
+
+(define-public (reactivate-license (license-id uint))
+  (begin
+      (asserts! (is-some (map-get? terminated-licenses license-id)) error-license-missing)
+      (map-set terminated-licenses license-id false)
+      (ok true)))
+
+(define-public (is-details-valid (details (string-ascii 512)))
+  (ok (and (> (len details) u0) (<= (len details) u512))))
+
+(define-public (get-license-counter-value)
+  (ok (var-get license-counter)))
+
+(define-public (reset-all-terminated)
+  (begin
+    (map-set terminated-licenses u0 false)
+    (ok true)))
+
