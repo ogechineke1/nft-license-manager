@@ -571,3 +571,89 @@
       (<= license-id current-count)))))
 
 
+(define-read-only (get-license-type)
+  (ok "nft-based"))
+
+(define-read-only (validate-details-structure (details (string-ascii 512)))
+  (ok (details-validation details)))
+
+(define-read-only (get-details-length (license-id uint))
+  (ok (len (unwrap! (map-get? license-details license-id) error-license-missing))))
+
+(define-read-only (get-termination-state (license-id uint))
+  (ok (license-terminated-check license-id)))
+
+(define-read-only (get-total-count)
+  (ok (var-get license-counter)))
+
+(define-read-only (get-license-age (license-id uint))
+  (let 
+      (
+          (total-licenses (var-get license-counter))
+          (relative-age (/ (* (- total-licenses license-id) u100) total-licenses))
+      )
+      (ok (if (is-some (map-get? license-details license-id))
+              relative-age
+              u0))))
+
+(define-read-only (check-transfer-eligibility (license-id uint) (potential-recipient principal))
+  (let 
+      (
+          (current-owner (unwrap! (nft-get-owner? license-nft license-id) error-license-missing))
+          (is-terminated (license-terminated-check license-id))
+      )
+      (ok {
+          current-owner: current-owner,
+          can-transfer: (and 
+              (not is-terminated) 
+              (not (is-eq current-owner potential-recipient))
+          ),
+          reason: (if is-terminated 
+                      "License is terminated"
+                      (if (is-eq current-owner potential-recipient)
+                          "Recipient is current owner"
+                          "Transfer eligible"))
+      })))
+
+(define-read-only (is-license-valid-basic (license-id uint))
+  (ok (and (is-some (map-get? license-details license-id)) (not (license-terminated-check license-id)))))
+
+(define-read-only (get-system-admin)
+  (ok contract-owner))
+
+(define-read-only (check-license-id-validity (license-id uint))
+  (ok (is-some (map-get? license-details license-id))))
+
+(define-read-only (check-license-termination (license-id uint))
+  (ok (license-terminated-check license-id)))
+
+(define-read-only (quick-termination-check (license-id uint))
+  (ok (default-to false (map-get? terminated-licenses license-id))))
+
+(define-read-only (get-details-max-size)
+  (ok u512))
+
+(define-read-only (simple-id-validation (license-id uint))
+  (ok (and (> license-id u0) (<= license-id (var-get license-counter)))))
+
+(define-read-only (check-bulk-limit (size uint))
+  (ok (<= size batch-issuance-limit)))
+
+(define-read-only (get-batch-limit)
+  (ok batch-issuance-limit))
+
+(define-read-only (get-system-status)
+  (ok "operational"))
+
+(define-read-only (quick-metadata-check (license-id uint))
+  (ok (is-some (map-get? license-details license-id))))
+
+(define-read-only (get-version)
+  (ok "v1.0"))
+
+;; System initialization
+(begin
+    (var-set license-counter u0))
+
+
+
