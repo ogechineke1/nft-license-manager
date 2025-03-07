@@ -38,4 +38,85 @@
 (define-map terminated-licenses uint bool)
 (define-map batch-license-details uint (string-ascii 512))
 
+;; ======================================
+;; SECTION 3: PRIVATE HELPER FUNCTIONS
+;; ======================================
+
+;; Ownership verification helper
+(define-private (owner-verification (license-id uint) (potential-owner principal))
+    (is-eq potential-owner (unwrap! (nft-get-owner? license-nft license-id) false)))
+
+;; License details validation
+(define-private (details-validation (details (string-ascii 512)))
+    (let 
+        (
+            (details-length (len details))
+        )
+        (and 
+            (> details-length u0) 
+            (<= details-length u512)
+            (not (is-eq details ""))
+        )
+    ))
+
+;; License status checking
+(define-private (license-terminated-check (license-id uint))
+    (default-to false (map-get? terminated-licenses license-id)))
+
+;; License details length verification
+(define-private (verify-details-length (details (string-ascii 512)))
+    (let
+        (
+            (details-length (len details))
+        )
+        (ok (and (> details-length u0) (<= details-length u512)))))
+
+;; Single license issuance core function
+(define-private (issue-single-license (details (string-ascii 512)))
+    (let 
+        (
+            (new-id (+ (var-get license-counter) u1))
+        )
+        (asserts! (details-validation details) error-license-details-invalid)
+        (try! (nft-mint? license-nft new-id tx-sender))
+        (map-set license-details new-id details)
+        (var-set license-counter new-id)
+        (ok new-id)))
+
+;; Batch details validation
+(define-private (validate-batch-details (details (string-ascii 512)) (valid-so-far bool))
+    (and valid-so-far (details-validation details)))
+
+;; Batch license issuance processor
+(define-private (process-batch-item (details (string-ascii 512)) (issued-so-far (list 50 uint)))
+    (match (issue-single-license details)
+        success (unwrap-panic (as-max-len? (append issued-so-far success) u50))
+        error issued-so-far))
+
+;; ======================================
+;; SECTION 4: PUBLIC ADMINISTRATION FUNCTIONS
+;; ======================================
+
+;; Issue a single license with metadata
+(define-public (issue-license (details (string-ascii 512)))
+    (begin
+        (asserts! (is-eq tx-sender contract-owner) error-permission-denied)
+        (asserts! (details-validation details) error-license-details-invalid)
+        (issue-single-license details)))
+
+;; Batch license issuance with validation
+(define-public (bulk-issue-licenses (detail-list (list 50 (string-ascii 512))))
+    (let 
+        (
+            (list-size (len detail-list))
+        )
+        (begin
+            (asserts! (is-eq tx-sender contract-owner) error-permission-denied)
+            (asserts! (<= list-size batch-issuance-limit) error-batch-size-exceeded)
+            (asserts! (fold validate-batch-details detail-list true) error-license-details-invalid)
+            (ok (fold process-batch-item detail-list (list))))))
+
+;; Ownership verification public function
+(define-public (verify-administrator)
+    (ok (is-eq tx-sender contract-owner)))
 
