@@ -406,3 +406,168 @@
       (ok (and (is-some details) (not terminated)))))
 
 
+
+(define-read-only (get-safe-details (license-id uint))
+  (map-get? license-details license-id))
+
+(define-read-only (next-id-preview)
+  (ok (+ (var-get license-counter) u1)))
+
+(define-read-only (get-basic-details (license-id uint))
+  (ok (map-get? license-details license-id)))
+
+(define-read-only (check-simple-termination (license-id uint))
+  (ok (license-terminated-check license-id)))
+
+(define-read-only (get-basic-owner (license-id uint))
+  (ok (unwrap! (nft-get-owner? license-nft license-id) error-license-missing)))
+
+(define-read-only (get-counter-simple)
+  (ok (var-get license-counter)))
+
+(define-read-only (get-counter)
+    (ok (var-get license-counter)))
+
+(define-read-only (calculate-license-percentage (license-id uint))
+  (let 
+      ((total-licenses (var-get license-counter)))
+    (ok (if (> total-licenses u0)
+            (/ (* license-id u100) total-licenses)
+            u0))))
+
+(define-read-only (is-details-empty (license-id uint))
+  (let 
+      ((details (map-get? license-details license-id)))
+    (ok (is-eq details (some "")))))
+
+(define-read-only (check-validity-basic (license-id uint))
+  (let 
+      (
+          (details (map-get? license-details license-id))
+      )
+      (ok (and (is-some details) (not (license-terminated-check license-id))))))
+
+(define-read-only (check-basic-existence (license-id uint))
+  (ok (is-some (map-get? license-details license-id))))
+
+(define-read-only (check-terminated-basic (license-id uint))
+  (ok (license-terminated-check license-id)))
+
+(define-read-only (is-id-in-range (license-id uint))
+  (ok (and (> license-id u0) (<= license-id (var-get license-counter)))))
+
+(define-read-only (get-total-issued)
+  (ok (var-get license-counter)))
+
+(define-read-only (is-terminated-quick (license-id uint))
+  (ok (default-to false (map-get? terminated-licenses license-id))))
+
+(define-read-only (get-termination-status (license-id uint))
+  (ok (license-terminated-check license-id)))
+
+(define-read-only (is-contract-administrator)
+  (ok (is-eq tx-sender contract-owner)))
+
+(define-read-only (fetch-details-direct (license-id uint))
+  (ok (map-get? license-details license-id)))
+
+(define-read-only (is-valid-bulk-size (bulk-size uint))
+  (ok (<= bulk-size batch-issuance-limit)))
+
+(define-read-only (check-termination-status (license-id uint))
+  (ok (license-terminated-check license-id)))
+
+(define-read-only (has-details (license-id uint))
+  (ok (is-some (map-get? license-details license-id))))
+
+(define-read-only (get-license-state (license-id uint))
+  (if (is-some (map-get? license-details license-id))
+      (if (license-terminated-check license-id)
+          (ok "Terminated")
+          (ok "Active"))
+      (ok "Not Found")))
+
+(define-read-only (get-license-count)
+  (ok (var-get license-counter)))
+
+(define-read-only (verify-details (details (string-ascii 512)))
+  (ok (details-validation details)))
+
+(define-read-only (licenses-issued)
+  (ok (var-get license-counter)))
+
+(define-read-only (check-details-length (details (string-ascii 512)))
+  (ok (and (> (len details) u0) (<= (len details) u512))))
+
+(define-read-only (get-license-owner-info (license-id uint))
+  (ok (unwrap! (nft-get-owner? license-nft license-id) error-license-missing)))
+
+(define-read-only (is-details-blank (details (string-ascii 512)))
+  (ok (is-eq details "")))
+
+(define-read-only (is-license-usable (license-id uint))
+  (let 
+      (
+          (exists (is-some (map-get? license-details license-id)))
+          (terminated (license-terminated-check license-id))
+      )
+      (ok (and exists (not terminated)))))
+
+(define-read-only (check-system-status)
+  (ok true))
+
+(define-read-only (get-error-code)
+  (ok error-permission-denied))
+
+(define-read-only (admin-check)
+  (ok (is-eq tx-sender contract-owner)))
+
+(define-read-only (admin-active-status)
+  (ok true))
+
+(define-read-only (license-total-simple)
+  (ok (var-get license-counter)))
+
+(define-read-only (quick-details-check (details (string-ascii 512)))
+  (ok (> (len details) u0)))
+
+
+(define-read-only (get-complete-license-info (license-id uint))
+  (let 
+      (
+          (details (map-get? license-details license-id))
+          (owner (nft-get-owner? license-nft license-id))
+          (terminated (license-terminated-check license-id))
+      )
+      (ok {
+          details: details,
+          owner: owner,
+          is-terminated: terminated
+      })))
+
+
+(define-read-only (quick-existence-check (license-id uint))
+  (ok (is-some (map-get? license-details license-id))))
+
+(define-read-only (get-max-details-length)
+  (ok u512))
+
+(define-read-only (get-license-block)
+  (ok (var-get license-counter)))
+
+(define-read-only (basic-license-validation (license-id uint))
+  (ok (and 
+    (> license-id u0) 
+    (<= license-id (var-get license-counter)))))
+
+(define-read-only (check-details-existence (license-id uint))
+  (ok (is-some (map-get? license-details license-id))))
+
+(define-read-only (is-license-current (license-id uint))
+  (let 
+      ((current-count (var-get license-counter)))
+    (ok (and 
+      (> license-id u0) 
+      (<= license-id current-count)))))
+
+
