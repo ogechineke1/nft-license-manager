@@ -292,3 +292,117 @@
               )
               (ok (and (not is-terminated) (is-some details)))))))
 
+
+(define-public (verify-administrator-status)
+  (ok (is-eq tx-sender contract-owner)))
+
+(define-public (is-contract-admin)
+  (ok (is-eq tx-sender contract-owner)))
+
+(define-public (check-license-status (license-id uint))
+  (let
+      ((terminated (map-get? terminated-licenses license-id)))
+    (ok (default-to false terminated))))
+
+(define-public (does-license-record-exist (license-id uint))
+  (ok (is-some (map-get? license-details license-id))))
+
+(define-public (check-owner-or-admin (license-id uint))
+  (let
+      ((license-owner (unwrap! (nft-get-owner? license-nft license-id) error-license-missing)))
+    (ok (or (is-eq tx-sender license-owner) (is-eq tx-sender contract-owner)))))
+
+(define-public (validate-license (license-id uint))
+  (let 
+      (
+          (details (map-get? license-details license-id))
+      )
+      (begin
+          (asserts! (is-some details) error-license-missing)
+          (let
+              (
+                  (is-terminated (license-terminated-check license-id))
+              )
+              (ok (not is-terminated))))))
+
+(define-public (get-license-owner (license-id uint))
+  (ok (nft-get-owner? license-nft license-id)))
+
+(define-public (reset-all-details)
+  (begin
+
+      (map-set license-details u0 "")
+      (ok true)))
+
+(define-public (increment-counter-safe)
+  (begin
+    (var-set license-counter (+ (var-get license-counter) u1))
+    (ok (var-get license-counter))))
+
+(define-public (verify-admin-with-msg (message (string-ascii 100)))
+  (begin
+    (asserts! (is-eq tx-sender contract-owner) error-permission-denied)
+    (ok message)))
+
+(define-public (check-if-owner (license-id uint))
+  (let 
+      (
+          (license-owner (unwrap! (nft-get-owner? license-nft license-id) error-license-missing))
+      )
+      (ok (is-eq license-owner tx-sender))))
+
+(define-public (terminate-if-not-terminated (license-id uint))
+  (let 
+      (
+          (is-terminated (license-terminated-check license-id))
+      )
+      (asserts! (not is-terminated) error-license-terminated)
+      (map-set terminated-licenses license-id true)
+      (ok true)))
+
+(define-public (validate-admin)
+  (begin
+    (asserts! (is-eq tx-sender contract-owner) error-permission-denied)
+    (ok true)))
+
+;; ======================================
+;; SECTION 6: READ-ONLY ACCESS FUNCTIONS
+;; ======================================
+
+(define-read-only (fetch-license-details (license-id uint))
+    (ok (map-get? license-details license-id)))
+
+(define-read-only (fetch-license-owner (license-id uint))
+    (ok (nft-get-owner? license-nft license-id)))
+
+(define-read-only (get-current-owner (license-id uint))
+  (ok (nft-get-owner? license-nft license-id)))
+
+(define-read-only (validate-license-existence (license-id uint))
+  (ok (is-some (map-get? license-details license-id))))
+
+(define-read-only (peek-next-license-id)
+  (ok (+ (var-get license-counter) u1)))
+
+(define-read-only (get-simple-owner (license-id uint))
+  (ok (nft-get-owner? license-nft license-id)))
+
+(define-read-only (basic-details-validation (details (string-ascii 512)))
+  (ok (details-validation details)))
+
+(define-read-only (check-owner-match (license-id uint) (potential-owner principal))
+  (let 
+      (
+          (current-owner (unwrap! (nft-get-owner? license-nft license-id) error-license-missing))
+      )
+      (ok (is-eq current-owner potential-owner))))
+
+(define-read-only (validate-authenticity (license-id uint))
+  (let 
+      (
+          (details (map-get? license-details license-id))
+          (terminated (license-terminated-check license-id))
+      )
+      (ok (and (is-some details) (not terminated)))))
+
+
