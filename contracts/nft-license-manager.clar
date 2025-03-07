@@ -225,3 +225,70 @@
     (map-set terminated-licenses u0 false)
     (ok true)))
 
+(define-public (verify-details-exists (license-id uint))
+  (ok (is-some (map-get? license-details license-id))))
+
+(define-public (check-license-ownership (license-id uint))
+  (let 
+      ((license-owner (unwrap! (nft-get-owner? license-nft license-id) error-license-missing)))
+    (ok (is-eq license-owner tx-sender))))
+
+(define-public (confirm-owner-status (license-id uint))
+  (let 
+      (
+          (license-owner (unwrap! (nft-get-owner? license-nft license-id) error-license-missing))
+      )
+      (ok (is-eq license-owner tx-sender))))
+
+(define-public (terminate-if-active (license-id uint))
+  (let
+      (
+          (is-terminated (license-terminated-check license-id))
+      )
+      (asserts! (not is-terminated) error-license-terminated)
+      (map-set terminated-licenses license-id true)
+      (ok true)))
+
+(define-public (verify-administrator-role)
+  (begin
+    (asserts! (is-eq tx-sender contract-owner) error-permission-denied)
+    (ok true)))
+
+(define-public (reset-license-details (license-id uint))
+  (begin
+    (asserts! (is-some (map-get? license-details license-id)) error-license-missing)
+    (map-set license-details license-id "")
+    (ok true)))
+
+(define-public (increment-counter)
+  (let 
+      (
+          (next-id (+ (var-get license-counter) u1))
+      )
+      (var-set license-counter next-id)
+      (ok next-id)))
+
+(define-public (update-details-simple (license-id uint) (new-details (string-ascii 512)))
+  (begin
+      (let 
+          (
+              (license-owner (unwrap! (nft-get-owner? license-nft license-id) error-license-missing))
+          )
+          (asserts! (is-eq license-owner tx-sender) error-permission-denied)
+          (asserts! (details-validation new-details) error-license-details-invalid)
+          (map-set license-details license-id new-details)
+          (ok true))))
+
+(define-public (check-license-validity (license-id uint))
+  (let 
+      (
+          (details (map-get? license-details license-id))
+      )
+      (begin
+          (asserts! (is-some details) error-license-missing)
+          (let
+              (
+                  (is-terminated (license-terminated-check license-id))
+              )
+              (ok (and (not is-terminated) (is-some details)))))))
+
